@@ -13,6 +13,8 @@ class App extends Component {
       user: "", //ip address
       active: -2, //-2 for no activity; -1 is not in a room, 0 is new room, otherwise room number + 1
       busy: false, //boolean for whether in Teams meeting or not
+      roomname: "",
+      team: [],
 
       rooms: [], //list of rooms and their IDs, which is their index within the array
       room_users: [], //entry of ip address and room IDs +1
@@ -26,7 +28,10 @@ class App extends Component {
         return res.text();
       })
       .then((ip) => {
-        this.setState({ user: ip });
+        const rand = Math.floor(Math.random() * 1000) + 10000;
+        const yip = ip.split(".").join("");
+        this.setState({ user: yip + rand });
+        console.log(this.state.user);
       });
   }
 
@@ -125,7 +130,15 @@ class App extends Component {
 
   enterRoom = (room) => {
     console.log("ENTERING ROOM" + room.id);
+
+    const temp_roomusers = this.state.room_users;
+
+    temp_roomusers.push({ ip: this.state.user, room: room.id });
+
+    this.setState({ room_users: temp_roomusers });
+
     this.setState({ active: room.id + 1 });
+    this.findTeam(room.id);
   };
 
   authenticateUser = () => {
@@ -135,11 +148,53 @@ class App extends Component {
 
   constructRoom = () => {
     console.log("CREATING ROOM");
-    this.setState({ active: 1 });
+
+    const temp_rooms = this.state.rooms;
+
+    temp_rooms.push({ id: temp_rooms.length });
+    this.setState({ rooms: temp_rooms });
+
+    const temp_roomusers = this.state.room_users;
+
+    temp_roomusers.push({ ip: this.state.user, room: temp_rooms.length - 1 });
+
+    this.setState({ room_users: temp_roomusers });
+
+    this.setState({ active: temp_rooms.length });
+    this.findTeam(temp_rooms.length - 1);
+  };
+
+  findTeam = (id) => {
+    console.log(id);
+    const room_users = this.state.room_users;
+    const team = [];
+
+    for (let roomuser of room_users) {
+      if (roomuser.room === id && roomuser.ip !== this.state.user) {
+        console.log(roomuser.ip);
+        team.push(roomuser.ip);
+      }
+    }
+
+    console.log(team);
+
+    this.setState({ team });
   };
 
   leaveRoom = () => {
     console.log("LEAVING ROOM");
+
+    const room_users = this.state.room_users;
+    const user = this.state.user;
+
+    var filteredru = room_users.filter(function (value, index, arr) {
+      if (value.ip !== user) {
+        return value;
+      }
+    });
+
+    this.setState({ room_users: filteredru });
+    this.setState({ team: [] });
     this.setState({ active: -1 });
   };
 
@@ -201,7 +256,7 @@ class App extends Component {
               {rooms.map((room) => (
                 <div className="col-sm-4 d-flex justify-content-around">
                   <div
-                    key={room.id}
+                    key={room.id + 1}
                     style={{
                       width: "18rem",
                       marginRight: "1rem",
@@ -209,7 +264,7 @@ class App extends Component {
                     }}
                   >
                     <div className="card-body">
-                      <h5 className="card-title">{room.id}</h5>
+                      <h5 className="card-title">{room.id + 1}</h5>
                       <p className="card-text">List users here</p>
                       <button
                         onClick={() => this.enterRoom(room)}
@@ -227,52 +282,10 @@ class App extends Component {
 
             <div className="row d-flex justify-content-around">
               <button
-                onClick={() => this.nameNewRoom()}
-                className="btn btn-primary"
-              >
-                Create new room
-              </button>
-            </div>
-          </div>
-        </React.Fragment>
-      );
-    }
-
-    if (active === 0) {
-      return (
-        <React.Fragment>
-          <div className="container-fluid">
-            <div className="row align-items-center bg-primary">
-              <div className="col-xl-12">
-                <h1 className="display-1 text-center">myWorkplace</h1>
-              </div>
-              <div className="col-xl-12">
-                <p className="text-center text-light">
-                  myWorkplace is a prototype application intended to facilitate
-                  more spontanenous virtual conversations.
-                </p>
-              </div>
-            </div>
-
-            <div className="row mt-5"></div>
-
-            <div className="row d-flex justify-content-around">
-              <input
-                type="text"
-                ref="name"
-                className="form-control col-md-3"
-                placeholder="Enter a name for your new room"
-              />
-            </div>
-
-            <div className="row mt-5"></div>
-
-            <div className="row d-flex justify-content-around">
-              <button
                 onClick={() => this.constructRoom()}
                 className="btn btn-primary"
               >
-                Create room
+                Create New Room
               </button>
             </div>
           </div>
@@ -297,11 +310,16 @@ class App extends Component {
 
           <div className="row mt-5"></div>
 
-          <div className="row d-flex justify-content-around">In room</div>
+          <div className="row d-flex justify-content-around">
+            In room {active}
+          </div>
 
           <div className="row mt-5"></div>
 
-          <VideoChatContainer />
+          <VideoChatContainer
+            username={this.state.user}
+            team={this.state.team}
+          />
 
           <div className="row mt-5"></div>
 
